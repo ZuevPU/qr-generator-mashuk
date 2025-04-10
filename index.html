@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>QR-код Машук</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2em; }
+    #qrcode { margin: 1em auto; }
+  </style>
+</head>
+<body>
+  <h1>Сканируй QR-код</h1>
+  <div id="qrcode"></div>
+  <p id="status">Генерация кода...</p>
+
+  <script>
+    const SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbwbPpaMUVAVpseoZO4ytD8L2YOtNQTYjcsWqPD9hYhYaR-wouUig8z0MphuEeIE3ZjwXg/exec"; // ВСТАВЬ СВОЙ URL
+
+    async function generateToken() {
+      const token = crypto.randomUUID();
+      await QRCode.toCanvas(document.getElementById("qrcode"), token, { width: 256 });
+      document.getElementById("status").textContent = `Токен: ${token}`;
+
+      await fetch(SHEET_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: token, used: false, timestamp: new Date().toISOString() })
+      });
+    }
+
+    async function updateLoop() {
+      await generateToken();
+      setTimeout(updateLoop, 10000);
+    }
+
+    updateLoop();
+  </script>
+</body>
+</html>
