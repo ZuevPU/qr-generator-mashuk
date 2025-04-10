@@ -1,48 +1,66 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>QR-код Машук</title>
+  <meta charset="UTF-8" />
+  <title>Одноразовый QR-код</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 2em; }
-    #qrcode { margin: 1em auto; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2em;
+    }
+    canvas {
+      margin: 1em auto;
+      display: block;
+    }
+    #status {
+      font-size: 1.2em;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <h1>Сканируй QR-код</h1>
   <canvas id="qrcode"></canvas>
-
   <p id="status">Генерация кода...</p>
 
   <script>
-    const SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbwbPpaMUVAVpseoZO4ytD8L2YOtNQTYjcsWqPD9hYhYaR-wouUig8z0MphuEeIE3ZjwXg/exec"; // ВСТАВЬ СВОЙ URL
+    const SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbwbPpaMUVAVpseoZO4ytD8L2YOtNQTYjcsWqPD9hYhYaR-wouUig8z0MphuEeIE3ZjwXg/exec"; // замените на ваш URL
 
     async function generateToken() {
       const token = crypto.randomUUID();
-      await QRCode.toCanvas(document.getElementById("qrcode"), token, { width: 256 });
-      document.getElementById("status").textContent = `Токен: ${token}`;
 
-      await fetch(SHEET_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: token, used: false, timestamp: new Date().toISOString() })
-      });
+      // Генерируем QR-код на canvas
+      const canvas = document.getElementById("qrcode");
+      await QRCode.toCanvas(canvas, token, { width: 256 });
+
+      // Отправляем токен на сервер
+      try {
+        await fetch(SHEET_WEBHOOK, {
+          method: "POST",
+          mode: "no-cors", // временное решение, Google Apps Script не отдает CORS-заголовки по умолчанию
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            token: token,
+            used: false,
+            timestamp: new Date().toISOString()
+          })
+        });
+        document.getElementById("status").textContent = `Токен: ${token}`;
+      } catch (error) {
+        document.getElementById("status").textContent = "Ошибка отправки: " + error;
+      }
     }
 
     async function updateLoop() {
       await generateToken();
-      setTimeout(updateLoop, 1000);
+      setTimeout(updateLoop, 10000); // обновлять каждые 10 секунд
     }
 
-    updateLoop();
-    await fetch(SHEET_WEBHOOK, {
-  method: "POST",
-  mode: "no-cors",  // ВРЕМЕННО! Если ты не обрабатываешь preflight
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ token: token, used: false, timestamp: new Date().toISOString() })
-});
-
+    updateLoop(); // запуск
   </script>
 </body>
 </html>
