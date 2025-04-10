@@ -33,7 +33,9 @@
 
       // Генерируем QR-код на canvas
       const canvas = document.getElementById("qrcode");
-      await QRCode.toCanvas(canvas, token, { width: 256 });
+      const url = `https://t.me/MentorTool_bot/MentorTool?startapp=${token}`;
+await QRCode.toCanvas(canvas, url, { width: 256 });
+
 
       // Отправляем токен на сервер
       try {
@@ -49,7 +51,8 @@
             timestamp: new Date().toISOString()
           })
         });
-        document.getElementById("status").textContent = `Токен: ${token}`;
+        document.getElementById("qrcode-status").textContent = `Ссылка: ${url}`;
+
       } catch (error) {
         document.getElementById("status").textContent = "Ошибка отправки: " + error;
       }
