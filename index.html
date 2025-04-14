@@ -25,53 +25,57 @@
   <canvas id="qrcode"></canvas>
   <p id="status">Генерация кода...</p>
 
-<script>
-  const SCRIPT_URL = "https://telegram-gamification-proxy.vercel.app/api/register_token";
-  let currentToken = null;
+  <script>
+    const REGISTER_URL = "https://qr-generator-mashuk.vercel.app/api/register_token";
+    const CHECK_URL = "https://qr-generator-mashuk.vercel.app/api/check_token";
+    let currentToken = null;
+    let lastUsedToken = null;
 
-  async function generateToken() {
-    const token = crypto.randomUUID();
-    currentToken = token;
+    async function generateToken() {
+      const token = crypto.randomUUID();
+      currentToken = token;
 
-    const url = `https://t.me/MentorTool_bot/MentorTool?startapp=${token}`;
-    const canvas = document.getElementById("qrcode");
-    await QRCode.toCanvas(canvas, url, { width: 256 });
-    document.getElementById("status").textContent = `Ссылка: ${url}`;
+      const url = `https://t.me/MentorTool_bot/MentorTool?startapp=${token}`;
+      const canvas = document.getElementById("qrcode");
+      await QRCode.toCanvas(canvas, url, { width: 256 });
 
-    try {
-      await fetch(SCRIPT_URL + '?action=register_token', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          used: false,
-          timestamp: new Date().toISOString()
-        })
-      });
-    } catch (error) {
-      document.getElementById("status").textContent = "Ошибка регистрации токена: " + error;
-    }
-  }
+      document.getElementById("status").textContent = `Ссылка: ${url}`;
 
-  async function pollForUse() {
-    if (!currentToken) return;
-
-    try {
-      const response = await fetch(`${SCRIPT_URL}?action=check_token&token=${currentToken}`);
-      const data = await response.json();
-
-      if (data.used === true) {
-        document.getElementById("status").textContent = "✅ QR-код использован. Обновление...";
-        setTimeout(() => generateToken(), 1000);
+      try {
+        await fetch(REGISTER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            used: false,
+            timestamp: new Date().toISOString()
+          })
+        });
+      } catch (error) {
+        document.getElementById("status").textContent = "Ошибка регистрации токена: " + error;
       }
-    } catch (error) {
-      console.error("Ошибка проверки токена:", error);
     }
-  }
 
-  generateToken();
-  setInterval(pollForUse, 5000); // проверка каждые 5 сек
-</script>
+    async function pollForUse() {
+      if (!currentToken) return;
 
+      try {
+        const response = await fetch(`${CHECK_URL}?token=${currentToken}`);
+        const data = await response.json();
+
+        if (data.used === true && currentToken !== lastUsedToken) {
+          lastUsedToken = currentToken;
+          document.getElementById("status").textContent = "✅ QR-код использован. Обновление...";
+          setTimeout(() => generateToken(), 1000);
+        }
+      } catch (error) {
+        console.error("Ошибка проверки токена:", error);
+      }
+    }
+
+    // Старт
+    generateToken();
+    setInterval(pollForUse, 5000);
+  </script>
 </body>
 </html>
