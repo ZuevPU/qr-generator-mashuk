@@ -1,35 +1,27 @@
-import { GoogleSpreadsheet } from 'google-spreadsheet';
-
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-const GOOGLE_SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   const { token } = req.query;
 
-  if (!token) {
-    return res.status(400).json({ error: 'Token is required' });
-  }
+  const scriptUrl = 'https://script.google.com/macros/s/AKfycbw_1HL86wGiQcXSiUODZYlU1sSmMZHwJl2xM3d9jPAYsyPWXvfe6dDZ2nLjS0-2P33d/exec';
 
   try {
-    const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
+    const response = await fetch(`${scriptUrl}?action=check_token&token=${token}`);
+    const text = await response.text();
 
-    await doc.useServiceAccountAuth({
-      client_email: GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: GOOGLE_PRIVATE_KEY,
-    });
+    // Проверяем, начинается ли ответ с {
+    if (!text.trim().startsWith("{")) {
+      throw new Error("Ответ от скрипта не JSON");
+    }
 
-    await doc.loadInfo();
-    const sheet = doc.sheetsByIndex[0];
-    const rows = await sheet.getRows();
-
-    const match = rows.find(row => row.token === token);
-
-    if (!match) return res.json({ used: false });
-
-    return res.json({ used: match.used === 'TRUE' || match.used === true });
+    const json = JSON.parse(text);
+    res.status(200).json(json);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    console.error('[check_token] Ошибка:', err);
+    res.status(500).json({ error: 'Ошибка при проверке токена' });
   }
 }
