@@ -26,9 +26,7 @@
   <p id="status">Генерация кода...</p>
 
   <script>
-    // ✅ Укажи свой URL Google Script
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjTBMvpJaTySgvk5wOrEJJOsp-bFnEP0jAjd4y5nF55jk_oR-3nudd3f5Lqee95MsM/exec";
-
     let currentToken = null;
 
     async function generateToken() {
@@ -42,7 +40,7 @@
       document.getElementById("status").textContent = `Ссылка: ${url}`;
 
       try {
-        await fetch(SCRIPT_URL + '?action=register_token', {
+        await fetch(SCRIPT_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -60,12 +58,19 @@
       if (!currentToken) return;
 
       try {
-        const response = await fetch(SCRIPT_URL + '?action=check_token&token=' + currentToken);
+        const response = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: currentToken })
+        });
+
         const data = await response.json();
 
-        if (data.used === true) {
+        if (data.status === "успешно" || data.used === true) {
           document.getElementById("status").textContent = "✅ Токен активирован! Генерируем новый...";
           setTimeout(() => generateToken(), 1000);
+        } else if (data.status === "повтор") {
+          document.getElementById("status").textContent = "⚠️ Токен уже был использован!";
         }
       } catch (error) {
         console.error("Ошибка проверки токена:", error);
@@ -73,7 +78,7 @@
     }
 
     generateToken();
-    setInterval(pollForUse, 5000);
+    setInterval(pollForUse, 5000); // проверка каждые 5 секунд
   </script>
 </body>
 </html>
