@@ -17,6 +17,6 @@ export default async function handler(req, res) {
     const text = await response.text();
     res.status(200).send(text);
   } catch (error) {
-    res.status(500).json({ error: 'Proxy error' });
+    res.status(500).json({ error: 'Proxy error', detail: error.message });
   }
 }
