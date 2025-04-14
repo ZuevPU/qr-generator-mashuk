@@ -26,58 +26,49 @@
   <p id="status">Генерация кода...</p>
 
   <script>
-  const SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbw_1HL86wGiQcXSiUODZYlU1sSmMZHwJl2xM3d9jPAYsyPWXvfe6dDZ2nLjS0-2P33d/exec"; // ← Укажи актуальный ID
-  const CHECK_ENDPOINT = "https://qr-generator-mashuk.vercel.app/"; // ← Укажи актуальный backend URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_1HL86wGiQcXSiUODZYlU1sSmMZHwJl2xM3d9jPAYsyPWXvfe6dDZ2nLjS0-2P33d/exec";
 
-  let currentToken = null;
+    let currentToken = null;
 
-  async function generateToken() {
-    const token = crypto.randomUUID();
-    currentToken = token;
+    async function generateToken() {
+      const token = crypto.randomUUID();
+      currentToken = token;
 
-    const url = `https://t.me/MentorTool_bot/MentorTool?startapp=${token}`;
-    const canvas = document.getElementById("qrcode");
-    await QRCode.toCanvas(canvas, url, { width: 256 });
+      const url = `https://t.me/MentorTool_bot/MentorTool?startapp=${token}`;
+      const canvas = document.getElementById("qrcode");
+      await QRCode.toCanvas(canvas, url, { width: 256 });
 
-    document.getElementById("status").textContent = `Ссылка активна: ${url}`;
+      document.getElementById("status").textContent = `Ссылка: ${url}`;
 
-    try {
-      await fetch(SHEET_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "token",
-          token: token,
-          used: false,
-          timestamp: new Date().toISOString()
-        })
-      });
-    } catch (error) {
-      document.getElementById("status").textContent = "Ошибка отправки токена";
-    }
-  }
-
-  async function pollForUse() {
-    if (!currentToken) return;
-
-    try {
-      const response = await fetch(`${CHECK_ENDPOINT}?token=${currentToken}`);
-      const result = await response.json();
-
-      if (result.used === true) {
-        document.getElementById("status").textContent = "✅ QR-код использован, создаю новый...";
-        await new Promise(res => setTimeout(res, 1000));
-        await generateToken(); // Генерируем новый
+      try {
+        await fetch(SCRIPT_URL + '?action=register_token', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: token, used: false, timestamp: new Date().toISOString() })
+        });
+      } catch (error) {
+        document.getElementById("status").textContent = "Ошибка при регистрации токена: " + error;
       }
-    } catch (error) {
-      console.error("Ошибка проверки токена:", error);
     }
-  }
 
-  // Запуск генерации и проверки
-  generateToken();
-  setInterval(pollForUse, 5000); // каждые 5 сек
-</script>
+    async function pollForUse() {
+      if (!currentToken) return;
 
+      try {
+        const response = await fetch(SCRIPT_URL + '?action=check_token&token=' + currentToken);
+        const data = await response.json();
+
+        if (data.used === true) {
+          document.getElementById("status").textContent = "✅ Токен активирован! Генерируем новый...";
+          setTimeout(() => generateToken(), 1000);
+        }
+      } catch (error) {
+        console.error("Ошибка проверки токена:", error);
+      }
+    }
+
+    generateToken();
+    setInterval(pollForUse, 5000); // каждые 5 секунд
+  </script>
 </body>
 </html>
