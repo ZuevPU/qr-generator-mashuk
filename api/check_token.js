@@ -5,20 +5,19 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Only GET method allowed' });
 
   const { token } = req.query;
-  if (!token) {
-    return res.status(400).json({ error: 'Token is required' });
-  }
-
   const scriptUrl = 'https://script.google.com/macros/s/AKfycbyjTBMvpJaTySgvk5wOrEJJOsp-bFnEP0jAjd4y5nF55jk_oR-3nudd3f5Lqee95MsM/exec';
 
+  if (!token) return res.status(400).json({ error: 'Missing token' });
+
   try {
-    const response = await fetch(`${scriptUrl}?token=${token}`);
+    const response = await fetch(`${scriptUrl}?token=${encodeURIComponent(token)}`);
     const data = await response.json();
     res.status(200).json(data);
   } catch (err) {
-    console.error('[check_token error]', err);
-    res.status(500).json({ error: 'Token check failed' });
+    console.error('[check_token] Error:', err);
+    res.status(500).json({ error: 'Failed to check token' });
   }
 }
