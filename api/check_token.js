@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   const { token } = req.query;
 
-  const scriptUrl = 'https://script.google.com/macros/s/AKfycbw_1HL86wGiQcXSiUODZYlU1sSmMZHwJl2xM3d9jPAYsyPWXvfe6dDZ2nLjS0-2P33d/exec';
+  const scriptUrl = 'https://script.google.com/macros/s/AKfycbyjTBMvpJaTySgvk5wOrEJJOsp-bFnEP0jAjd4y5nF55jk_oR-3nudd3f5Lqee95MsM/exec';
 
   try {
     const response = await fetch(`${scriptUrl}?action=check_token&token=${token}`);
