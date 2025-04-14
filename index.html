@@ -26,7 +26,8 @@
   <p id="status">Генерация кода...</p>
 
   <script>
-    const SHEET_WEBHOOK = "/api/register_token"; // Прокси API на Vercel
+    // ✅ Укажи свой URL Google Script
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjTBMvpJaTySgvk5wOrEJJOsp-bFnEP0jAjd4y5nF55jk_oR-3nudd3f5Lqee95MsM/exec";
 
     let currentToken = null;
 
@@ -41,7 +42,7 @@
       document.getElementById("status").textContent = `Ссылка: ${url}`;
 
       try {
-        await fetch(SHEET_WEBHOOK + '?action=register_token', {
+        await fetch(SCRIPT_URL + '?action=register_token', {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -59,7 +60,7 @@
       if (!currentToken) return;
 
       try {
-        const response = await fetch(SHEET_WEBHOOK + '?action=check_token&token=' + currentToken);
+        const response = await fetch(SCRIPT_URL + '?action=check_token&token=' + currentToken);
         const data = await response.json();
 
         if (data.used === true) {
@@ -71,9 +72,8 @@
       }
     }
 
-    // Старт генерации
     generateToken();
-    setInterval(pollForUse, 5000); // каждые 5 секунд
+    setInterval(pollForUse, 5000);
   </script>
 </body>
 </html>
