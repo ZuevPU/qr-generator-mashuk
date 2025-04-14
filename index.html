@@ -25,60 +25,53 @@
   <canvas id="qrcode"></canvas>
   <p id="status">Генерация кода...</p>
 
-  <script>
-const SCRIPT_URL = "/api/register_token"; // вместо прямого запроса к Google Script
-    let currentToken = null;
+<script>
+  const SCRIPT_URL = "https://telegram-gamification-proxy.vercel.app/api/register_token";
+  let currentToken = null;
 
-    async function generateToken() {
-      const token = crypto.randomUUID();
-      currentToken = token;
+  async function generateToken() {
+    const token = crypto.randomUUID();
+    currentToken = token;
 
-      const url = `https://t.me/MentorTool_bot/MentorTool?startapp=${token}`;
-      const canvas = document.getElementById("qrcode");
-      await QRCode.toCanvas(canvas, url, { width: 256 });
+    const url = `https://t.me/MentorTool_bot/MentorTool?startapp=${token}`;
+    const canvas = document.getElementById("qrcode");
+    await QRCode.toCanvas(canvas, url, { width: 256 });
+    document.getElementById("status").textContent = `Ссылка: ${url}`;
 
-      document.getElementById("status").textContent = `Ссылка: ${url}`;
-
-      try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token: token,
-            used: false,
-            timestamp: new Date().toISOString()
-          })
-        });
-      } catch (error) {
-        document.getElementById("status").textContent = "Ошибка при регистрации токена: " + error;
-      }
+    try {
+      await fetch(SCRIPT_URL + '?action=register_token', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          used: false,
+          timestamp: new Date().toISOString()
+        })
+      });
+    } catch (error) {
+      document.getElementById("status").textContent = "Ошибка регистрации токена: " + error;
     }
+  }
 
-    async function pollForUse() {
-      if (!currentToken) return;
+  async function pollForUse() {
+    if (!currentToken) return;
 
-      try {
-        const response = await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: currentToken })
-        });
+    try {
+      const response = await fetch(`${SCRIPT_URL}?action=check_token&token=${currentToken}`);
+      const data = await response.json();
 
-        const data = await response.json();
-
-        if (data.status === "успешно" || data.used === true) {
-          document.getElementById("status").textContent = "✅ Токен активирован! Генерируем новый...";
-          setTimeout(() => generateToken(), 1000);
-        } else if (data.status === "повтор") {
-          document.getElementById("status").textContent = "⚠️ Токен уже был использован!";
-        }
-      } catch (error) {
-        console.error("Ошибка проверки токена:", error);
+      if (data.used === true) {
+        document.getElementById("status").textContent = "✅ QR-код использован. Обновление...";
+        setTimeout(() => generateToken(), 1000);
       }
+    } catch (error) {
+      console.error("Ошибка проверки токена:", error);
     }
+  }
 
-    generateToken();
-    setInterval(pollForUse, 5000); // проверка каждые 5 секунд
-  </script>
+  generateToken();
+  setInterval(pollForUse, 5000); // проверка каждые 5 сек
+</script>
+
 </body>
 </html>
