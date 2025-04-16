@@ -35,7 +35,7 @@
       const token = crypto.randomUUID();
       currentToken = token;
 
-      const url = `https://t.me/MentorTool_bot/MentorTool?startapp=${token}`;
+      const url = `http://t.me/MentorTool_bot/BigChange?startapp=${token}`;
       const canvas = document.getElementById("qrcode");
       await QRCode.toCanvas(canvas, url, { width: 256 });
 
