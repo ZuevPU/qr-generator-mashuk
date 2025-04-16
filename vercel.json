@@ -2,7 +2,7 @@
   "version": 2,
   "routes": [
     { "src": "/api/check_token", "dest": "/api/check_token.js" },
-    { "src": "/api/register_token", "dest": "/api/register_token.js" },
+    { "src": "/api/register_token", "dest": "/api/register_token.js" }
 
   ]
 }
