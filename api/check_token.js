@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Only GET method allowed' });
 
   const { token } = req.query;
-  const scriptUrl = 'https://script.google.com/macros/s/AKfycbwsu18BPytS4DYGN79wuFg9B1ignjrnrEqaAM70uHgPgerGOwkMIkaJeq9aQXXg2UHg/exec';
+  const scriptUrl = 'https://script.google.com/macros/s/AKfycby0ZaGp-y9RB_WD7hhdeXjyJ57Jz94Jd-rqKmaY-PtEfbOwsyM00Km91vCvDgyIQxAN/exec';
 
   if (!token) return res.status(400).json({ error: 'Missing token' });
 
