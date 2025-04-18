@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   try {
     const { token, used, timestamp } = req.body;
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbzO-qc4Sc-B7BnEGL8fSQUkE6v7rUVL-spPkm9rU5urnA2HKKjsi8zmz7kjGrH5ZBcA/exec?action=register_token";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbw8etHZFFaZ0SD6P19fsujsmJhXK2XtR5-wlSieeMNKmfV_TA9X5gMgF8TZgAMqYdfU/exec?action=register_token";
 
     const response = await fetch(scriptUrl, {
       method: "POST",
