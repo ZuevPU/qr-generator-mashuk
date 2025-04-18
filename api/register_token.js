@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Token is required' });
     }
 
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbw8etHZFFaZ0SD6P19fsujsmJhXK2XtR5-wlSieeMNKmfV_TA9X5gMgF8TZgAMqYdfU/exec?action=register_token";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyvItiJPCKa4Sq5nuAbM8FKiI3y-hq5YdSEgXgcA4x6LvZgUQ7P8XHkT587bCA2C3Sh/exec?action=register_token";
 
     const response = await fetch(scriptUrl, {
       method: "POST",
