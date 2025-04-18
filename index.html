@@ -35,11 +35,11 @@
       const token = crypto.randomUUID();
       currentToken = token;
 
-      const url = `http://t.me/MentorTool_bot/BigChange?startapp=${token}`;
+      const url = `https://t.me/MentorTool_bot/BigChange?startapp=${token}`;
       const canvas = document.getElementById("qrcode");
       await QRCode.toCanvas(canvas, url, { width: 256 });
 
-      document.getElementById("status").textContent = `Ссылка: ${url}`;
+      document.getElementById("status").textContent = `🔗 Ссылка: ${url}`;
 
       try {
         await fetch(REGISTER_URL, {
@@ -52,7 +52,7 @@
           })
         });
       } catch (error) {
-        document.getElementById("status").textContent = "Ошибка регистрации токена: " + error;
+        document.getElementById("status").textContent = "❌ Ошибка регистрации токена: " + error;
       }
     }
 
@@ -63,13 +63,17 @@
         const response = await fetch(`${CHECK_URL}?token=${currentToken}`);
         const data = await response.json();
 
-        if (data.used === true && currentToken !== lastUsedToken) {
+        if ((data.used === true || data.status === "повтор") && currentToken !== lastUsedToken) {
           lastUsedToken = currentToken;
-          document.getElementById("status").textContent = "✅ QR-код использован. Обновление...";
+          document.getElementById("status").textContent =
+            data.status === "повтор"
+              ? "⚠️ Попытка повторного использования. Генерация нового..."
+              : "✅ QR-код использован. Генерация нового...";
           setTimeout(() => generateToken(), 1000);
         }
       } catch (error) {
         console.error("Ошибка проверки токена:", error);
+        document.getElementById("status").textContent = "⚠️ Ошибка связи с сервером";
       }
     }
 
