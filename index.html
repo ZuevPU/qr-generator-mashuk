@@ -67,9 +67,8 @@
           lastUsedToken = currentToken;
           document.getElementById("status").textContent =
             data.status === "повтор"
-              ? "⚠️ Попытка повторного использования. Генерация нового..."
-              : "✅ QR-код использован. Генерация нового...";
-          setTimeout(() => generateToken(), 1000);
+              ? "⚠️ Попытка повторного использования. Ждём обновления..."
+              : "✅ QR-код использован. Ждём обновления...";
         }
       } catch (error) {
         console.error("Ошибка проверки токена:", error);
@@ -77,9 +76,10 @@
       }
     }
 
-    // Старт
+    // Запускаем генерацию каждые 2 секунды
     generateToken();
-    setInterval(pollForUse, 5000);
+    setInterval(generateToken, 2000);
+    setInterval(pollForUse, 3000); // проверка на использование раз в 3 секунды
   </script>
 </body>
 </html>
