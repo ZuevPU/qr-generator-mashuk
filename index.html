@@ -18,10 +18,14 @@
       font-size: 1.2em;
       margin-top: 10px;
     }
+    #emoji-display {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
-  <div id="emoji-display" style="font-size: 2rem; margin-bottom: 10px;"></div>
+  <div id="emoji-display"></div>
 
   <h1>Сканируй QR-код</h1>
   <canvas id="qrcode"></canvas>
@@ -33,6 +37,16 @@
     let currentToken = null;
     let lastUsedToken = null;
 
+    function generateRandomEmojis(count = 4) {
+      const emojis = ["🦉", "🦊", "🐢", "🧠", "⚡️", "🔥", "🧩", "🎓", "🌟", "🚀", "📚", "🎮"];
+      const selected = [];
+      while (selected.length < count) {
+        const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+        if (!selected.includes(emoji)) selected.push(emoji);
+      }
+      return selected.join(" ");
+    }
+
     async function generateToken() {
       const token = crypto.randomUUID();
       currentToken = token;
@@ -42,6 +56,10 @@
       await QRCode.toCanvas(canvas, url, { width: 256 });
 
       document.getElementById("status").textContent = `🔗 Ссылка: ${url}`;
+
+      // Показываем эмоджи
+      const emojis = generateRandomEmojis();
+      document.getElementById("emoji-display").textContent = emojis;
 
       try {
         await fetch(REGISTER_URL, {
@@ -78,10 +96,10 @@
       }
     }
 
-    // Запускаем генерацию каждые 2 секунды
+    // Запускаем генерацию и проверку
     generateToken();
     setInterval(generateToken, 2000);
-    setInterval(pollForUse, 3000); // проверка на использование раз в 3 секунды
+    setInterval(pollForUse, 3000);
   </script>
 </body>
 </html>
