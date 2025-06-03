@@ -1,105 +1,322 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Одноразовый QR-код</title>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2em;
-    }
-    canvas {
-      margin: 1em auto;
-      display: block;
-    }
-    #status {
-      font-size: 1.2em;
-      margin-top: 10px;
-    }
-    #emoji-display {
-      font-size: 2rem;
-      margin-bottom: 10px;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <title>QR-код для Мероприятия с Таймером</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 2em;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f4f4f4;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        canvas, #expiredGif {
+            margin: 1em auto;
+            display: block;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-width: 256px;
+            height: auto;
+        }
+        canvas {
+            display: none; /* QR-код скрыт по умолчанию */
+        }
+        #expiredGif {
+            display: none; /* GIF скрыт по умолчанию */
+        }
+        #status {
+            font-size: 1.2em;
+            margin-top: 10px;
+            color: #555;
+        }
+        #emoji-display {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        #countdown-timer {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #dc3545;
+            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+            text-align: left;
+        }
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background-color 0.3s ease;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
-  <div id="emoji-display"></div>
+    <div class="container">
+        <div id="emoji-display"></div>
+        <h1>QR-код для Мероприятия</h1>
 
-  <h1>Сканируй QR-код</h1>
-  <canvas id="qrcode"></canvas>
-  <p id="status">Генерация кода...</p>
+        <label for="eventName">Название мероприятия:</label>
+        <input type="text" id="eventName" value="сюда" placeholder="Введите название мероприятия">
 
-  <script>
-    const REGISTER_URL = "https://qr-generator-mashuk.vercel.app/api/register_token";
-    const CHECK_URL = "https://qr-generator-mashuk.vercel.app/api/check_token";
-    let currentToken = null;
-    let lastUsedToken = null;
+        <label for="expirySlider">Время жизни QR (минут): <span id="expiryValue">1</span></label>
+        <input type="range" id="expirySlider" min="1" max="60" value="1">
+        
+        <button id="startButton" onclick="startGenerationProcess()">Запустить</button>
 
-    function generateRandomEmojis(count = 4) {
-      const emojis = ["🦉", "🦊", "🐢", "🧠", "⚡️", "🔥", "🧩", "🎓", "🌟", "🚀", "📚", "🎮"];
-      const selected = [];
-      while (selected.length < count) {
-        const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-        if (!selected.includes(emoji)) selected.push(emoji);
-      }
-      return selected.join(" ");
-    }
+        <p id="countdown-timer">⏳</p>
+        <canvas id="qrcode"></canvas>
+        <img id="expiredGif" src="https://media1.tenor.com/m/M_HYbyotRHwAAAAd/sad.gif" alt="QR Expired">
+        <p id="status">Нажмите "Запустить" для начала.</p>
+    </div>
 
-    async function generateToken() {
-      const token = crypto.randomUUID();
-      currentToken = token;
+    <script>
+        const REGISTER_URL = "https://qr-generator-mashuk.vercel.app/api/register_token";
+        const CHECK_URL = "https://qr-generator-mashuk.vercel.app/api/check_token";
+        const TELEGRAM_BOT_BASE_URL = "https://t.me/MentorTool_bot/BigChange?startapp=";
 
-      const url = `https://t.me/MentorTool_bot/BigChange?startapp=${token}`;
-      const canvas = document.getElementById("qrcode");
-      await QRCode.toCanvas(canvas, url, { width: 256 });
+        let currentToken = null;
+        let lastUsedToken = null;
+        let countdownInterval;
+        let pollInterval;
+        // autoRegenerateTimeout больше не нужен, так как авторегенерация отменена
 
-      document.getElementById("status").textContent = `🔗 Ссылка: ${url}`;
-
-      // Показываем эмоджи
-      const emojis = generateRandomEmojis();
-      document.getElementById("emoji-display").textContent = emojis;
-
-      try {
-        await fetch(REGISTER_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token,
-            used: false,
-            timestamp: new Date().toISOString()
-          })
-        });
-      } catch (error) {
-        document.getElementById("status").textContent = "❌ Ошибка регистрации токена: " + error;
-      }
-    }
-
-    async function pollForUse() {
-      if (!currentToken) return;
-
-      try {
-        const response = await fetch(`${CHECK_URL}?token=${currentToken}`);
-        const data = await response.json();
-
-        if ((data.used === true || data.status === "повтор") && currentToken !== lastUsedToken) {
-          lastUsedToken = currentToken;
-          document.getElementById("status").textContent =
-            data.status === "повтор"
-              ? "⚠️ Попытка повторного использования. Ждём обновления..."
-              : "✅ QR-код использован. Ждём обновления...";
+        function generateRandomEmojis(count = 4) {
+            const emojis = ["🦉", "🦊", "🐢", "🧠", "⚡️", "🔥", "🧩", "🎓", "🌟", "🚀", "📚", "🎮"];
+            const selected = [];
+            while (selected.length < count) {
+                const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                if (!selected.includes(emoji)) selected.push(emoji);
+            }
+            return selected.join(" ");
         }
-      } catch (error) {
-        console.error("Ошибка проверки токена:", error);
-        document.getElementById("status").textContent = "⚠️ Ошибка связи с сервером";
-      }
-    }
 
-    // Запускаем генерацию и проверку
-    generateToken();
-    setInterval(generateToken, 2000);
-    setInterval(pollForUse, 3000);
-  </script>
+        document.getElementById('expirySlider').oninput = function() {
+            document.getElementById('expiryValue').textContent = this.value;
+        };
+
+        // Функция для отображения QR-кода и скрытия GIF
+        function showQrCode() {
+            document.getElementById("qrcode").style.display = 'block';
+            document.getElementById("expiredGif").style.display = 'none';
+        }
+
+        // Функция для отображения GIF и скрытия QR-кода
+        function showExpiredGif() {
+            document.getElementById("qrcode").style.display = 'none';
+            document.getElementById("expiredGif").style.display = 'block';
+        }
+
+        // Функция для транслитерации кириллицы в латиницу (простая версия)
+        function transliterate(text) {
+            const mapping = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh', 'з': 'z', 'и': 'i',
+                'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't',
+                'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y',
+                'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+                'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 'Ж': 'Zh', 'З': 'Z', 'И': 'I',
+                'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T',
+                'У': 'U', 'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Sch', 'Ъ': '', 'Ы': 'Y',
+                'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya',
+                ' ': '_', '.': '', ',': '', '!': '', '?': '', '/': '', '\\': '', '(': '', ')': '', '-': '_', '=': '', '+': '',
+                '@': '', '#': '', '$': '', '%': '', '^': '', '&': '', '*': '', '[': '', ']': '', '{': '', '}': '',
+                '<': '', '>': '', ';': '', ':': '', '\'': '', '"': '', '`': '~', '~': '', '`': ''
+            };
+            
+            let result = '';
+            text = text.toLowerCase();
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                result += mapping[char] || char;
+            }
+            result = result.replace(/__+/g, '_').replace(/^_|_$/g, '');
+            return result;
+        }
+
+        async function generateTokenAndQr() {
+            // Очищаем предыдущий таймер, если он был запущен
+            if (countdownInterval) clearInterval(countdownInterval);
+            // autoRegenerateTimeout больше не нужен, поэтому нет необходимости его очищать
+
+            const eventName = document.getElementById('eventName').value.trim();
+            if (eventName === '') {
+                document.getElementById("status").textContent = "❌ Пожалуйста, введите название мероприятия.";
+                showExpiredGif(); // Показываем GIF, если название не введено
+                return;
+            }
+            
+            const token = transliterate(eventName); 
+            currentToken = token;
+
+            const url = TELEGRAM_BOT_BASE_URL + encodeURIComponent(token);
+            
+            try {
+                await QRCode.toCanvas(document.getElementById("qrcode"), url, { width: 256 });
+                showQrCode(); // Показываем QR-код
+                document.getElementById("status").textContent = `🔗 Код активен для мероприятия: "${eventName}". Ожидание сканирования...`;
+            } catch (error) {
+                document.getElementById("status").textContent = `❌ Ошибка генерации QR: ${error}`;
+                console.error("Ошибка генерации QR:", error);
+                showExpiredGif(); // Показываем GIF в случае ошибки генерации
+                return;
+            }
+
+            const emojis = generateRandomEmojis();
+            document.getElementById("emoji-display").textContent = emojis;
+
+            try {
+                const response = await fetch(REGISTER_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        token: currentToken,
+                        eventName: eventName,
+                        used: false,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Ошибка регистрации: ${response.status} ${errorText}`);
+                }
+            } catch (error) {
+                document.getElementById("status").textContent = "❌ Ошибка регистрации токена: " + error.message;
+                console.error("Ошибка регистрации токена:", error);
+            }
+
+            startCountdown();
+        }
+
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            // autoRegenerateTimeout больше не нужен
+
+            const expiresInMinutes = parseInt(document.getElementById('expirySlider').value);
+            const expiryTime = new Date().getTime() + expiresInMinutes * 60 * 1000;
+
+            const countdownElement = document.getElementById("countdown-timer");
+            const statusElement = document.getElementById("status");
+
+            countdownInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const timeLeft = expiryTime - now;
+
+                if (timeLeft < 0) {
+                    clearInterval(countdownInterval); // Останавливаем таймер
+                    countdownElement.textContent = 'QR-код истёк!';
+                    showExpiredGif(); // Показываем GIF, когда время истекло
+                    statusElement.textContent = "QR-код истёк. Нажмите Запустить, чтобы сгенерировать новый.";
+                    
+                    // УБРАНА АВТОМАТИЧЕСКАЯ РЕГЕНЕРАЦИЯ ЗДЕСЬ
+                    // autoRegenerateTimeout = setTimeout(generateTokenAndQr, 1000); 
+                } else {
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    countdownElement.textContent = `Истекает через: ${minutes}м ${seconds}с`;
+                    showQrCode();
+                }
+            }, 1000);
+        }
+
+        async function pollForUse() {
+            if (!currentToken) return;
+
+            try {
+                const response = await fetch(`${CHECK_URL}?token=${currentToken}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Ошибка проверки: ${response.status} ${errorText}`);
+                }
+                const data = await response.json();
+
+                if ((data.used === true || data.status === "повтор") && currentToken !== lastUsedToken) {
+                    lastUsedToken = currentToken;
+                    clearInterval(countdownInterval); // Останавливаем таймер
+                    // autoRegenerateTimeout больше не нужен
+                    showExpiredGif(); // Показываем GIF, если код использован
+                    document.getElementById("countdown-timer").textContent = 'QR-код использован!';
+                    document.getElementById("status").textContent = 
+                        data.status === "повтор"
+                            ? "⚠️ Попытка повторного использования. Нажмите Запустить, чтобы сгенерировать новый."
+                            : "✅ QR-код успешно использован. Нажмите Запустить, чтобы сгенерировать новый.";
+                    
+                    // УБРАНА АВТОМАТИЧЕСКАЯ РЕГЕНЕРАЦИЯ ЗДЕСЬ
+                    // setTimeout(generateTokenAndQr, 2000);
+                }
+            } catch (error) {
+                console.error("Ошибка проверки токена:", error);
+                document.getElementById("status").textContent = "⚠️ Ошибка связи с сервером при проверке";
+            }
+        }
+
+        function startGenerationProcess() {
+            // Перезапускаем все интервалы и таймауты перед новой генерацией
+            if (pollInterval) clearInterval(pollInterval); // Останавливаем предыдущий опрос
+            // if (countdownInterval) clearInterval(countdownInterval); // Уже очищается в generateTokenAndQr
+            // if (autoRegenerateTimeout) clearTimeout(autoRegenerateTimeout); // Больше не используется
+
+            document.getElementById('startButton').disabled = true; // Отключаем кнопку, пока идёт процесс
+            document.getElementById('status').textContent = 'Генерация...';
+
+            generateTokenAndQr().then(() => {
+                // После успешной генерации QR и старта таймера, включаем кнопку обратно
+                // и запускаем опрос сервера
+                document.getElementById('startButton').disabled = false;
+                pollInterval = setInterval(pollForUse, 1500);
+            }).catch(() => {
+                // Если произошла ошибка при генерации, тоже включаем кнопку
+                document.getElementById('startButton').disabled = false;
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('expirySlider').value = 1; 
+            document.getElementById('expiryValue').textContent = 1;
+            document.getElementById("countdown-timer").textContent = 'Готово к запуску';
+            // ВАЖНО: Скрываем QR и GIF при загрузке страницы, по умолчанию ничего не видно
+            document.getElementById("qrcode").style.display = 'none';
+            document.getElementById("expiredGif").style.display = 'none';
+        });
+    </script>
 </body>
 </html>
